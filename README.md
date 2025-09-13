@@ -6,8 +6,11 @@
 <style>
 body { margin:0; overflow:hidden; background:#87ceeb; touch-action:none; }
 #score { position:absolute; top:10px; left:10px; font-size:20px; font-family:Arial, sans-serif; color:#fff; z-index:10;}
-.controls { position:absolute; bottom:10px; left:50%; transform:translateX(-50%); z-index:10;}
+.controls { position:absolute; bottom:10px; left:50%; transform:translateX(-50%); z-index:10; }
 button { font-size:16px; padding:8px 12px; margin:5px; }
+.virtual-btn { position:absolute; bottom:60px; width:60px; height:60px; font-size:24px; opacity:0.5; background:#000; color:#fff; border-radius:50%; text-align:center; line-height:60px; user-select:none; }
+#leftBtn { left:30px; }
+#rightBtn { right:30px; }
 canvas { display:block; }
 </style>
 </head>
@@ -17,13 +20,26 @@ canvas { display:block; }
   <button onclick="restartGame()">重新开始</button>
   <button onclick="exitGame()">退出游戏</button>
 </div>
-<canvas id="gameCanvas"></canvas>
+<div id="leftBtn" class="virtual-btn">◀</div>
+<div id="rightBtn" class="virtual-btn">▶</div>
 
+<canvas id="gameCanvas"></canvas>
 <script>
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
+
+// 设置 canvas 尺寸，考虑设备像素比
+function resizeCanvas(){
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = window.innerWidth * dpr;
+  canvas.height = window.innerHeight * dpr;
+  canvas.style.width = window.innerWidth + 'px';
+  canvas.style.height = window.innerHeight + 'px';
+  ctx.setTransform(1,0,0,1,0,0); // 重置缩放
+  ctx.scale(dpr,dpr);
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
 
 let car = {x: canvas.width/2, y: canvas.height-100, width:40, height:20};
 let keys = {left:false, right:false};
@@ -31,9 +47,8 @@ let obstacles = [];
 let scroll = 0;
 let score = 0;
 let gameOver = false;
-let touchStartX = 0;
 
-// 监听键盘
+// 键盘控制
 document.addEventListener('keydown', e=>{
   if(e.key==='ArrowLeft'||e.key==='a') keys.left=true;
   if(e.key==='ArrowRight'||e.key==='d') keys.right=true;
@@ -43,7 +58,8 @@ document.addEventListener('keyup', e=>{
   if(e.key==='ArrowRight'||e.key==='d') keys.right=false;
 });
 
-// 手机触屏
+// 手机触屏滑动控制
+let touchStartX = 0;
 canvas.addEventListener('touchstart', e=>{
   touchStartX = e.touches[0].clientX;
 });
@@ -51,9 +67,17 @@ canvas.addEventListener('touchmove', e=>{
   const dx = e.touches[0].clientX - touchStartX;
   car.x += dx*0.1;
   if(car.x<20) car.x=20;
-  if(car.x>canvas.width-20) car.x=canvas.width-20;
+  if(car.x>canvas.width/2-20) car.x=canvas.width/2-20;
   touchStartX = e.touches[0].clientX;
 },{passive:false});
+
+// 手机虚拟按键
+const leftBtn = document.getElementById('leftBtn');
+const rightBtn = document.getElementById('rightBtn');
+leftBtn.addEventListener('touchstart', ()=>{ keys.left=true; });
+leftBtn.addEventListener('touchend', ()=>{ keys.left=false; });
+rightBtn.addEventListener('touchstart', ()=>{ keys.right=true; });
+rightBtn.addEventListener('touchend', ()=>{ keys.right=false; });
 
 // 生成障碍物
 function createObstacle(){
@@ -76,19 +100,18 @@ function restartGame(){
 // 退出游戏
 function exitGame(){
   if(confirm("是否确认退出游戏？")){
-    gameOver = true;
-    alert("游戏已退出，页面将关闭！");
-    window.close(); // 有些浏览器不允许直接关闭
-    // 如果关闭失败，刷新页面作为替代
-    setTimeout(()=>{ location.reload(); }, 200);
+    gameOver=true;
+    alert("游戏已退出！");
+    window.close();
+    setTimeout(()=>{ location.reload(); },200);
   }
 }
 
-// 更新游戏状态
+// 更新游戏
 function update(){
   if(gameOver) return;
   if(keys.left) car.x -= 5;
-  if(keys.right) car.x +=5;
+  if(keys.right) car.x += 5;
   if(car.x<20) car.x=20;
   if(car.x>canvas.width-20) car.x=canvas.width-20;
 
@@ -97,19 +120,17 @@ function update(){
   score = Math.floor(scroll/5);
   document.getElementById('score').innerText = "分数: "+score;
 
-  // 移动障碍物
+  // 移动障碍
   for(let i=0;i<obstacles.length;i++){
     obstacles[i].y +=5;
-    // 碰撞检测
     if(obstacles[i].y+obstacles[i].height>car.y &&
        obstacles[i].y<car.y+car.height &&
        obstacles[i].x+obstacles[i].width>car.x-car.width/2 &&
        obstacles[i].x<car.x+car.width/2){
-      gameOver = true;
+      gameOver=true;
       alert("游戏结束! 得分: "+score);
     }
   }
-  // 删除超出屏幕的障碍
   obstacles = obstacles.filter(o=>o.y<canvas.height+20);
 }
 
@@ -131,12 +152,10 @@ function drawRoad(){
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
   drawRoad();
-
-  // 绘制玩家
+  // 玩家
   ctx.fillStyle="green";
   ctx.fillRect(car.x-car.width/2, car.y, car.width, car.height);
-
-  // 绘制障碍物
+  // 障碍
   ctx.fillStyle="red";
   for(let o of obstacles){
     ctx.fillRect(o.x, o.y, o.width, o.height);
