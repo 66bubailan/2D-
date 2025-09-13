@@ -29,23 +29,15 @@ canvas { display:block; }
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-let dpr = window.devicePixelRatio || 1;
-
-// 设置 Canvas 尺寸并缩放
 function resizeCanvas(){
-  dpr = window.devicePixelRatio || 1;
-  canvas.width = window.innerWidth * dpr;
-  canvas.height = window.innerHeight * dpr;
-  canvas.style.width = window.innerWidth + 'px';
-  canvas.style.height = window.innerHeight + 'px';
-  ctx.setTransform(1,0,0,1,0,0); 
-  ctx.scale(dpr,dpr);
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
 }
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
 
 // 玩家小车
-let car = {x: window.innerWidth/2, y: window.innerHeight-100, width:40, height:20};
+let car = {x: canvas.width/2, y: canvas.height-100, width:40, height:20};
 let keys = {left:false, right:false};
 let obstacles = [];
 let scroll = 0;
@@ -70,8 +62,8 @@ canvas.addEventListener('touchstart', e=>{
 canvas.addEventListener('touchmove', e=>{
   const dx = e.touches[0].clientX - touchStartX;
   car.x += dx * 0.1;
-  if(car.x<20) car.x=20;
-  if(car.x>window.innerWidth-20) car.x=window.innerWidth-20;
+  if(car.x < 20) car.x = 20;
+  if(car.x > canvas.width-20) car.x = canvas.width-20;
   touchStartX = e.touches[0].clientX;
 },{passive:false});
 
@@ -85,7 +77,7 @@ rightBtn.addEventListener('touchend', ()=>{ keys.right=false; });
 
 // 生成障碍物
 function createObstacle(){
-  const x = Math.random()*(window.innerWidth-40)+20;
+  const x = Math.random()*(canvas.width-40)+20;
   obstacles.push({x:x, y:-20, width:30, height:20});
 }
 
@@ -93,7 +85,7 @@ function createObstacle(){
 function restartGame(){
   if(confirm("是否重新开始游戏？")){
     obstacles=[];
-    car.x = window.innerWidth/2;
+    car.x = canvas.width/2;
     score = 0;
     scroll = 0;
     gameOver = false;
@@ -118,7 +110,7 @@ function update(){
   if(keys.left) car.x -= 5;
   if(keys.right) car.x += 5;
   if(car.x<20) car.x=20;
-  if(car.x>window.innerWidth-20) car.x=window.innerWidth-20;
+  if(car.x>canvas.width-20) car.x=canvas.width-20;
 
   scroll += 5;
   if(scroll % 60 === 0) createObstacle();
@@ -136,30 +128,30 @@ function update(){
       alert("游戏结束! 得分: "+score);
     }
   }
-  obstacles = obstacles.filter(o=>o.y<window.innerHeight+20);
+  obstacles = obstacles.filter(o=>o.y<canvas.height+20);
 }
 
 // 绘制山路
 function drawRoad(){
   ctx.fillStyle="#654321";
   ctx.beginPath();
-  ctx.moveTo(0, window.innerHeight);
-  for(let i=0;i<window.innerWidth;i+=10){
-    const y = window.innerHeight/2 + Math.sin((i+scroll*0.5)/50)*50;
+  ctx.moveTo(0, canvas.height);
+  for(let i=0;i<canvas.width;i+=10){
+    const y = canvas.height/2 + Math.sin((i+scroll*0.5)/50)*50;
     ctx.lineTo(i, y);
   }
-  ctx.lineTo(window.innerWidth, window.innerHeight);
+  ctx.lineTo(canvas.width, canvas.height);
   ctx.closePath();
   ctx.fill();
 }
 
 // 绘制游戏
 function draw(){
-  ctx.clearRect(0,0,window.innerWidth, window.innerHeight);
+  ctx.clearRect(0,0,canvas.width, canvas.height);
   drawRoad();
   // 玩家小车
   ctx.fillStyle = "green";
-  ctx.fillRect(car.x-car.width/2, car.y, car.width, car.height);
+  ctx.fillRect(car.x - car.width/2, car.y, car.width, car.height);
   // 障碍物
   ctx.fillStyle = "red";
   for(let o of obstacles){
